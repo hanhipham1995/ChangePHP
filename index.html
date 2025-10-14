@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Nhận Biết Và Phân Loại Rác</title>
+    <style>
+        body {
+            background-color: #a8d5ba; /* Green background */ 
+            background-image: url('Resources/HINHNHI.jpg');
+            background-repeat: no-repeat;
+            background-size: cover;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+        }
+        .header {
+            font-size: 2.5rem;
+            color: #333;
+            margin-bottom: 20px; /* Space between text and button */
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            background-color: #fff;
+            border: 2px solid #333;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #f0f0f0; /* Change color on hover */
+        }
+        #video {
+            width: 640px;
+            height: 480px;
+            border: 1px solid #ccc;
+            display: none;
+        }
+        #start {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .text {
+            font-size: 30px;
+        }
+        #logo {
+            position: absolute;
+            top: 0;
+            right: 0;
+            z-index: -1;
+            width: 200px;
+        }
+        @media (max-width: 450px) {
+            .header {
+                font-size: 25px;
+                padding-top: 40px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 id="header" class="header">(AI) NHẬN BIẾT VÀ PHÂN LOẠI RÁC THẢI Ở TRƯỜNG HỌC</h1>
+        <button id="start" onclick="init()">Start</button>
+        <div id="webcam-container"></div>
+        <div id="label-container" class="text"></div>
+    </div>
+
+    <audio style="position: absolute; top: 0;" controls autoplay>
+        <source src="Resources/UNILEVER - NÀY NÀY, PHÂN LOẠI RÁC ĐI NÀO!.mp3" type="audio/ogg">
+        Your browser does not support the audio element.
+    </audio>
+    <img id="logo" src="">
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+
+    <script type="text/javascript">
+    // Khai báo biến
+    const URL = "https://teachablemachine.withgoogle.com/models/c9mkYsguO/";
+    let model, webcam, labelContainer, maxPredictions;
+    let currentClass = "";
+    let currentAudio = null;
+    let chodocmotlan = true;
+
+    // Các file âm thanh
+    const audioPlastic = new Audio('Resources/Rac_thai_nhua.mp3');
+    const audioPaper = new Audio('Resources/Rac_thai_giay.mp3');
+    const audioNotRecycled = new Audio('Resources/Rac_thai_khong_tai_che.mp3');
+    const audioNotProduct = new Audio('Resources/Chua_co_rac.mp3');
+    const audiovolon = new Audio('Resources/rac_thai_tai_che_vo_lon.mp3');
+
+    async function init() {
+        document.getElementById('start').style.display = 'none';
+        document.getElementById('header').style.display = 'none';
+
+        const modelURL = URL + "model.json";
+        const metadataURL = URL + "metadata.json";
+
+        model = await tmImage.load(modelURL, metadataURL);
+        maxPredictions = model.getTotalClasses();
+
+        // Khởi tạo webcam từ Teachable Machine
+        webcam = new tmImage.Webcam(640, 480, true); // width, height, flip
+        await webcam.setup(); // Yêu cầu quyền truy cập camera
+        await webcam.play();
+
+        // Hiển thị video webcam
+        document.getElementById("webcam-container").appendChild(webcam.canvas);
+        labelContainer = document.getElementById("label-container");
+
+        window.requestAnimationFrame(loop);
+    }
+
+    async function loop() {
+        webcam.update(); // Cập nhật frame
+        await predict();
+        window.requestAnimationFrame(loop);
+    }
+
+    async function predict() {
+        const predictions = await model.predictTopK(webcam.canvas, 1);
+        const detectedClass = predictions[0].className;
+        console.log(detectedClass);
+        labelContainer.innerText = detectedClass;
+
+        if (detectedClass !== currentClass) {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+            }
+
+            currentClass = detectedClass;
+
+            // Chọn âm thanh phù hợp
+            if (detectedClass === "CHƯA CÓ VẬT PHẨM RÁC THẢI") {
+                currentAudio = audioNotProduct;
+            } else if (detectedClass === "RÁC THẢI TÁI CHẾ ( RÁC THẢI NHỰA ) ") {
+                currentAudio = audioPlastic;
+                chodocmotlan = true;
+            } else if (detectedClass === "RÁC THẢI TÁI CHẾ ( RÁC THẢI GIẤY ) ") {
+                currentAudio = audioPaper;
+                chodocmotlan = true;
+            } else if (detectedClass === "RÁC THẢI KHÔNG TÁI CHẾ") {
+                currentAudio = audioNotRecycled;
+                chodocmotlan = true;
+            } else if (detectedClass === "RÁC THẢI TÁI CHẾ ( VỎ LON ) ") {
+                currentAudio = audiovolon;
+                chodocmotlan = true;
+            } else {
+                currentAudio = null;
+            }
+
+            if (currentAudio) {
+                currentAudio.play();
+            }
+        }
+    }
+    </script>
+</body>
+</html>
